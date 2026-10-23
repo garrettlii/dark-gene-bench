@@ -27,7 +27,8 @@ def main() -> None:
     cutoff_info = None
     pmid_cutoff = dcfg.get("pmid_cutoff")
     if args.resolve_pmid_cutoff:
-        cutoff_info = resolve_pmid_cutoff(dcfg["cutoff_date"], api_key=os.environ.get("NCBI_API_KEY"))
+        cutoff_info = resolve_pmid_cutoff(dcfg["cutoff_date"], api_key=os.environ.get("NCBI_API_KEY"),
+                                          stray_gap=dcfg.get("stray_pmid_gap"))
         pmid_cutoff = cutoff_info["pmid_cutoff"]
         print(f"PMID cutoff for {dcfg['cutoff_date']}: {pmid_cutoff} ({cutoff_info})")
         if cutoff_info["truncated"]:

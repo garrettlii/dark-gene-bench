@@ -60,7 +60,8 @@ def de_h5ad(tmp_path: Path) -> Path:
     obs = pd.DataFrame(
         [{"target_gene": t, "culture_condition": c,
           "neighboring_gene_KD": t == "DDD4", "distal_offtarget_flag": False,
-          "low_target_gex": False, "keep_test_genes": t != "EEE5", "n_de": i}
+          "low_target_gex": False, "keep_test_genes": t != "EEE5", "n_de": i,
+          "ontarget_significant": c == "Rest"}
          for i, (t, c) in enumerate((t, c) for t in targets for c in conds)]
     )
     obs.index = [f"p{i}" for i in range(len(obs))]
@@ -79,7 +80,7 @@ def de_h5ad(tmp_path: Path) -> Path:
 def columns_cfg() -> dict:
     return {
         "obs": {"target_gene": "target_gene", "target_gene_id": None, "condition": "culture_condition",
-                "n_cells": None, "effect_size": "n_de",
+                "n_cells": None, "effect_size": "n_de", "ontarget_significant": "ontarget_significant",
                 "flags_exclude_true": ["neighboring_gene_KD", "distal_offtarget_flag", "low_target_gex"],
                 "flags_require_true": ["keep_test_genes"]},
         "var": {"gene_symbol": None},

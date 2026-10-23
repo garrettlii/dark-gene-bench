@@ -150,3 +150,22 @@ def test_prereg_guard(tmp_path):
     f.write_text(PREREG.format(top="0.2"))
     with pytest.raises(PreregError, match="uncommitted"):
         check_prereg("prereg.md", repo=repo)
+
+
+def test_prereg_guard_requires_clean_config(tmp_path):
+    repo = tmp_path / "repo"
+    (repo / "config").mkdir(parents=True)
+    _git(repo, "init", "-b", "main")
+    (repo / "prereg.md").write_text(PREREG.format(top="0.1"))
+    cfg = repo / "config" / "default.yaml"
+    cfg.write_text("a: 1\n")
+    _git(repo, "add", "prereg.md", "config/default.yaml")
+    _git(repo, "commit", "-m", "Add pre-registration")
+    check_prereg("prereg.md", repo=repo, require_pushed=False)
+    cfg.write_text("a: 2\n")
+    with pytest.raises(PreregError, match="config/"):
+        check_prereg("prereg.md", repo=repo, require_pushed=False)  # modified tracked file
+    _git(repo, "checkout", "--", "config/default.yaml")
+    (repo / "config" / "new.txt").write_text("x\n")
+    with pytest.raises(PreregError, match="config/"):
+        check_prereg("prereg.md", repo=repo, require_pushed=False)  # new untracked file

@@ -53,12 +53,19 @@ def main() -> None:
            "n_conditions_qc": ("qc_pass", "sum"), "flagged_paper": ("flagged_paper", "any")}
     if "effect_size" in mapped:
         agg["effect_size_median"] = ("effect_size", "median")
+    if "ontarget_significant" in mapped:
+        # covariate only: share of the gene's QC-passing conditions with significant on-target knockdown
+        mapped["ontarget_sig_qc"] = mapped["ontarget_significant"].where(mapped["qc_pass"]).astype(float)
+        agg["ontarget_sig_rate"] = ("ontarget_sig_qc", "mean")
     genes = mapped.groupby("GeneID").agg(**agg).reset_index()
     genes = genes.merge(gene_info[["GeneID", "Symbol"]].rename(columns={"Symbol": "symbol"}), on="GeneID", how="left")
     genes = attach_density(genes, density, epsilon=cfg["density"]["epsilon"])
     eligible = genes["qc_pass_any"]
     genes["density_bin"] = pd.NA
-    genes.loc[eligible, "density_bin"] = assign_bins(genes.loc[eligible, "log_density"], cfg["density"]["n_bins"]).to_numpy()
+    zero_bin = cfg["density"].get("zero_bin", False)
+    genes.loc[eligible, "density_bin"] = assign_bins(
+        genes.loc[eligible, "log_density"], cfg["density"]["n_bins"],
+        n_papers=genes.loc[eligible, "n_papers"] if zero_bin else None).to_numpy()
     genes["density_bin"] = genes["density_bin"].astype("Int64")
 
     ptab.to_parquet(derived_path(cfg, "perturbations.parquet"), index=False)
@@ -90,14 +97,19 @@ def main() -> None:
     if "effect_size_median" in genes:
         header += " effect size median |"
         sep += "---|"
+    if "ontarget_sig_rate" in genes:
+        header += " on-target KD significant (mean share of QC conditions) |"
+        sep += "---|"
     lines += [header, sep]
     for b, sub in genes[eligible].groupby("density_bin"):
         row = (f"| {int(b)} | {len(sub)} | {int(sub['n_papers'].min())} | {sub['n_papers'].median():.0f} | "
                f"{int(sub['n_papers'].max())} | {(sub['n_papers'] == 0).mean():.2f} | {int(sub['flagged_paper'].sum())} |")
         if "effect_size_median" in genes:
             row += f" {sub['effect_size_median'].median():.1f} |"
+        if "ontarget_sig_rate" in genes:
+            row += f" {sub['ontarget_sig_rate'].mean():.2f} |"
         lines.append(row)
-    n_got, n_req = genes.loc[eligible, "density_bin"].nunique(), cfg["density"]["n_bins"]
+    n_got, n_req = genes.loc[eligible, "density_bin"].nunique(), cfg["density"]["n_bins"] + int(zero_bin)
     if n_got < n_req:
         lines += ["", f"Warning: {n_req} bins requested but ties in density produced {n_got}. "
                   "Many genes share the lowest counts; decide how to bin before pre-registering."]

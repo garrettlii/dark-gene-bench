@@ -2,7 +2,7 @@
 
 A batch may be generated only if its pre-registration file
 1. has no unfilled ``<<FILL`` placeholders,
-2. is tracked by git with no uncommitted changes, and
+2. is tracked by git with no uncommitted changes, nor uncommitted or untracked files under config/, and
 3. (by default) is contained in a remote-tracking branch, so the push gives an
    external timestamp.
 The commit hash is written into the batch manifest.
@@ -46,6 +46,8 @@ def check_prereg(path: str | Path, repo: Path = REPO_ROOT, require_pushed: bool 
     _git(["ls-files", "--error-unmatch", rel], repo)
     if _git(["status", "--porcelain", "--", rel], repo):
         raise PreregError(f"{rel} has uncommitted changes; commit it first")
+    if _git(["status", "--porcelain", "--untracked-files=all", "--", "config"], repo):
+        raise PreregError("config/ has uncommitted or untracked changes; commit them first")
     commit, when = _git(["log", "-1", "--format=%H|%cI", "--", rel], repo).split("|")
     pushed_to = []
     if require_pushed:

@@ -10,11 +10,11 @@ Manipulation check for the density axis. Do models' no-data answers about knockd
 
 Recorded automatically in the batch manifest: config hash and full config, dataset checksum, this file's commit hash, seed.
 
-- Density cutoff date (`density.cutoff_date`) and resolved PMID cutoff: <<FILL: date and PMID>>
-- Evaluated models and backends (API or CLI, with model IDs): <<FILL: list>>
-- Number of density bins, and the rule if ties at low density collapse bins: <<FILL: e.g. 5 quintiles; ties kept together and bins reported as produced>>
-- Questions per bin and maximum per gene: <<FILL: e.g. 120 and 3>>
-- Genes named in the dataset paper (`config/flagged_genes.txt`) filled in and excluded: <<FILL: yes/no, count>>
+- Density cutoff date (`density.cutoff_date`) and resolved PMID cutoff: 2026-07-01 (Claude Opus 5.5 reliable-knowledge and training-data cutoffs are both June 2026). PMID cutoff 42378835 (smallest PMID entered that day after ignoring PMIDs more than 1,000,000 below the day's median as re-dated old records; 1 record ignored; D-008), resolved 2026-10-22 via NCBI E-utilities, truncated: false. gene2pubmed downloaded 2026-10-22, SHA-256 894da35d6648.
+- Evaluated models and backends (API or CLI, with model IDs): opus-5.5-cli only: Claude Opus 5.5 (claude-opus-5-5) via Claude Code 2.1.309 in print mode; all tools disallowed; effort xhigh; CLAUDE_CONFIG_DIR=~/.claude-bench (no plugins, MCP servers or CLAUDE.md; nine account-synced skills are present in that directory but cannot run with all tools disallowed). GPT-6.1 Sol is not run in Phase 0.
+- Number of density bins, and the rule if ties at low density collapse bins: 5 quintiles of log10 fractional density over QC-passing genes; genes with no papers fall in the lowest quintile; tied genes share a bin; bins reported as produced (5 in the feasibility report). A separate zero-paper bin (D-007) was dropped before any model call because it had too few up/down candidates for label balance (D-010).
+- Questions per bin and maximum per gene: 120 per bin (40 per label), at most 3 per gene; the largest of 120, 105, 90, 75 and 60 for which the dry run showed no bin, including bin 0, below quota.
+- Genes named in the dataset paper (`config/flagged_genes.txt`) filled in and excluded: Yes. 114 genes named as knockdown targets with reported effects anywhere in the text layers (main text, figure captions and methods; references and supplementary files excluded) of the preprint (bioRxiv, DOI 10.64898/2025.12.23.696273, v1) and the Cell article (DOI 10.1016/j.cell.2026.08.002); unclear target-or-readout calls were flagged; figure panels are images, so names shown only inside panels were not captured; 114 are in the screen and 102 pass QC; all are excluded from sampling (probe.exclude_flagged_genes: true).
 
 Readout panel, condition labels and truth thresholds are as in `config/default.yaml` at this commit.
 
@@ -38,17 +38,17 @@ The scorer applies these mechanically:
 
 ```yaml
 predictions:
-  top_bin_min_skill: <<FILL: number>>
-  bottom_bin_max_skill: <<FILL: number>>
-  min_slope: <<FILL: number>>
+  top_bin_min_skill: 0.1
+  bottom_bin_max_skill: 0.01
+  min_slope: 0.02
 ```
 
-Expected direction and reasoning: <<FILL: one or two sentences per model>>
+Expected direction and reasoning: I predict that Claude Opus 5.5 will exhibit a positive relationship between gene literature density and prior-only prediction skill. For well-studied genes, the model may leverage previously learned gene functions, regulatory relationships, and biological mechanisms to predict knockdown effects. For poorly studied genes, this information is expected to be less accessible or less complete, leading to performance closer to the label-frequency baseline. We expect the strongest skill in the highest-density bin and a positive overall density gradient.
 
 ## Decision rule
 
 - Proceed to Phase 1 if P1a and P1c pass for at least one model.
-- If P1a and P1c pass but P1b fails, the least-studied bin is not dark enough: <<FILL: e.g. split the bottom bin further before Phase 1>>.
+- If P1a and P1c pass but P1b fails, the least-studied bin is not dark enough: Write a new pre-registration for a Phase 0b batch restricted to the zero-paper genes, with readouts drawn from each gene's transcriptome-wide differential expression instead of the fixed T-cell panel, which these genes rarely affect; label-balanced as here. Phase 1 waits for its result.
 - If P1a or P1c fails for every model, stop and record the result in `docs/DECISIONS.md`.
 
 ## Handling

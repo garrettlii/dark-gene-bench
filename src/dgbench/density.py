@@ -85,16 +85,38 @@ def attach_density(genes: pd.DataFrame, density: pd.DataFrame, epsilon: float) -
     return out
 
 
-def assign_bins(values: pd.Series, n_bins: int) -> pd.Series:
-    """Equal-count bins (0 = least studied). Tied values share a bin via average ranks."""
-    ranks = values.rank(method="average")
-    return pd.qcut(ranks, q=n_bins, labels=False, duplicates="drop").astype("int64")
+def assign_bins(values: pd.Series, n_bins: int, n_papers: pd.Series | None = None) -> pd.Series:
+    """Equal-count bins (0 = least studied). Tied values share a bin via average ranks.
+
+    With ``n_papers``, genes with zero papers get bin 0 and the rest get bins 1..n_bins.
+    """
+    if n_papers is None:
+        ranks = values.rank(method="average")
+        return pd.qcut(ranks, q=n_bins, labels=False, duplicates="drop").astype("int64")
+    zero = (n_papers == 0).to_numpy()
+    out = pd.Series(0, index=values.index, dtype="int64")
+    if (~zero).any():
+        out[~zero] = assign_bins(values[~zero], n_bins).to_numpy() + 1
+    return out
+
+
+def day_min_pmid(ids: list[int], stray_gap: int | None) -> tuple[int, int]:
+    """(smallest PMID, number dropped) after dropping strays more than ``stray_gap`` below the day's median.
+
+    Stray: an old record whose entry date was reset to that day.
+    """
+    if stray_gap is None:
+        return min(ids), 0
+    floor = int(np.median(ids)) - stray_gap
+    kept = [i for i in ids if i >= floor]
+    return min(kept), len(ids) - len(kept)
 
 
 def resolve_pmid_cutoff(date_str: str, max_days_forward: int = 7, api_key: str | None = None,
-                        email: str | None = None, retmax: int = 10_000) -> dict:
+                        email: str | None = None, retmax: int = 10_000, stray_gap: int | None = None) -> dict:
     """Smallest PMID whose PubMed entry date (edat) falls on the first non-empty day at or after date_str.
 
+    PMIDs more than ``stray_gap`` below that day's median are ignored (see ``day_min_pmid``).
     Approximation: if more than ``retmax`` records share that day, the minimum is
     taken over the returned subset and ``truncated`` is set.
     """
@@ -114,7 +136,9 @@ def resolve_pmid_cutoff(date_str: str, max_days_forward: int = 7, api_key: str |
         ids = [int(x) for x in result.get("idlist", [])]
         count = int(result.get("count", 0))
         if ids:
-            return {"date_requested": date_str, "date_used": d, "pmid_cutoff": min(ids),
-                    "records_that_day": count, "truncated": count > len(ids)}
+            cutoff, n_stray = day_min_pmid(ids, stray_gap)
+            return {"date_requested": date_str, "date_used": d, "pmid_cutoff": cutoff,
+                    "records_that_day": count, "stray_records_dropped": n_stray, "stray_gap": stray_gap,
+                    "truncated": count > len(ids)}
         time.sleep(0.4)
     raise RuntimeError(f"No PubMed records found within {max_days_forward} days after {date_str}")

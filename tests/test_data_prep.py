@@ -3,7 +3,7 @@ import pandas as pd
 import pytest
 
 from dgbench.config import resolve_paths
-from dgbench.density import assign_bins, attach_density, compute_density, read_gene2pubmed
+from dgbench.density import assign_bins, attach_density, compute_density, day_min_pmid, read_gene2pubmed
 from dgbench.genes import build_maps, map_targets, read_gene_info
 from dgbench.perturb import describe, perturbation_table, read_columns, read_obs_var, readout_long
 
@@ -32,6 +32,29 @@ def test_attach_density_and_bins():
     assert bins[out["GeneID"].isin([4, 5, 6])].nunique() == 1  # tied zeros share a bin
 
 
+def test_zero_bin():
+    n_papers = pd.Series([0, 0, 0, 1, 1, 2, 4, 8, 16, 32])
+    log_density = np.log10(n_papers + 0.01)
+    bins = assign_bins(log_density, n_bins=3, n_papers=n_papers)
+    assert (bins[n_papers == 0] == 0).all()
+    assert (bins[n_papers > 0] >= 1).all() and bins.max() == 3
+    assert bins[n_papers == 1].nunique() == 1  # non-zero ties share a bin
+
+
+def test_zero_bin_without_zero_paper_genes():
+    n_papers = pd.Series([1, 2, 3, 4, 5, 6])
+    log_density = np.log10(n_papers + 0.01)
+    bins = assign_bins(log_density, n_bins=3, n_papers=n_papers)
+    assert sorted(bins.unique()) == [1, 2, 3]
+    assert (bins.to_numpy() == assign_bins(log_density, n_bins=3).to_numpy() + 1).all()
+
+
+def test_zero_bin_all_zero_paper_genes():
+    n_papers = pd.Series([0, 0, 0, 0])
+    bins = assign_bins(np.log10(n_papers + 0.01), n_bins=5, n_papers=n_papers)
+    assert (bins == 0).all()
+
+
 def test_gene_mapping(gene_info_path):
     maps = build_maps(read_gene_info(gene_info_path))
     m = map_targets(["AAA1", "ccc3", "OLDA", "SHARED", "ZZZ9", "XYZ"], maps,
@@ -52,6 +75,8 @@ def test_perturbation_table_qc(de_h5ad, columns_cfg):
     assert not by_target["EEE5"]  # fails keep_test_genes
     assert by_target["AAA1"]
     assert "effect_size" in pt
+    assert pt.loc[pt["condition"] == "Rest", "ontarget_significant"].all()
+    assert not pt.loc[pt["condition"] == "Stim48hr", "ontarget_significant"].any()
 
 
 def test_missing_column_raises(de_h5ad, columns_cfg):
@@ -94,3 +119,10 @@ def test_paths_inside_repo_rejected(tmp_path):
                     "truth_root": str(tmp_path / "t")}, "x": "{runs_root}/a {prompt}"}
     out = resolve_paths(ok)
     assert out["x"].endswith("/a {prompt}")
+
+
+def test_day_min_pmid_drops_strays():
+    ids = [25_905_264, 42_378_835, 42_378_836, 42_380_000, 42_809_664]
+    assert day_min_pmid(ids, stray_gap=1_000_000) == (42_378_835, 1)
+    assert day_min_pmid(ids, stray_gap=None) == (25_905_264, 0)
+    assert day_min_pmid(ids[1:], stray_gap=1_000_000) == (42_378_835, 0)

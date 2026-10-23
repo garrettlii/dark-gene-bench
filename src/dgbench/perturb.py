@@ -119,6 +119,9 @@ def perturbation_table(obs: pd.DataFrame, cols: dict, min_cells: int | None = No
     eff_col = oc.get("effect_size")
     if eff_col:
         out["effect_size"] = pd.to_numeric(obs[eff_col], errors="coerce").to_numpy()
+    ot_col = oc.get("ontarget_significant")
+    if ot_col:
+        out["ontarget_significant"] = _as_bool(obs[ot_col]).to_numpy()
     out["qc_pass"] = qc.to_numpy()
     return out
 

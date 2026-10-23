@@ -50,7 +50,7 @@ Arc Institute profiled CRISPRi knockdowns in six cancer cell lines (10x Flex). F
 - *Context-specific (Phase 1):* the same count restricted to T-cell papers (MeSH).
 - *Empirical:* each model's own no-data score per gene.
 
-**Bins:** quintiles of log density over QC-passing genes (0 = least studied). Ties at the low end can merge bins; the feasibility report flags this, and the binning rule is fixed in the pre-registration.
+**Bins:** quintiles of log density over QC-passing genes (0 = least studied); genes with no papers fall in the lowest quintile, and tied genes share a bin. A separate zero-paper bin (`density.zero_bin`, D-007) is implemented but off (D-010). Ties can merge bins; the feasibility report flags this, and the binning rule is fixed in the pre-registration.
 
 **Matching (Phase 1):** within each bin, match genes on cross-donor reliability, effect size, knockdown efficiency and baseline expression. Without matching, a falling curve could mean "noisier data" rather than "less known".
 

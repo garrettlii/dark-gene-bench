@@ -14,9 +14,11 @@ density:
   # Count papers entered in PubMed before this date. Use the earliest
   # training-data cutoff among the evaluated models; record it in the pre-registration.
   cutoff_date: "2026-07-01"
-  pmid_cutoff: null          # set by scripts/02_build_density.py --resolve-pmid-cutoff, or by hand
+  stray_pmid_gap: 1000000    # ignore PMIDs this far below the cutoff day's median (old records with reset entry dates; D-008)
+  pmid_cutoff: 42378835          # set by scripts/02_build_density.py --resolve-pmid-cutoff, or by hand
   epsilon: 0.01              # log10(fractional count + epsilon)
   n_bins: 5
+  zero_bin: false            # true: genes with 0 papers form bin 0, the rest get bins 1..n_bins (D-007; off per D-010)
 
 perturb:
   columns_file: config/columns.yaml
@@ -35,7 +37,7 @@ probe:
     Stim8hr: "8 hours after re-stimulation"
     Stim48hr: "48 hours after re-stimulation"
   # Readouts must be measured genes in the DE results; missing ones are reported and skipped.
-  readout_panel: [IL2, IFNG, TNF, IL2RA, CD69, CD40LG, TNFRSF4, MKI67, IL17A, IL4, IL13, FOXP3, GZMB, CCR7, SELL]
+  readout_panel: [IL2, IFNG, TNF, IL2RA, CD69, CD40LG, TNFRSF4, MKI67, IL4, IL13, FOXP3, GZMB, CCR7, SELL]
   truth:
     alpha: 0.05          # adjusted p below this counts as a change ...
     lfc_min: 0.25        # ... if |log fold change| is at least this
@@ -57,11 +59,12 @@ models:
   - name: opus-5.5-cli
     enabled: true
     backend: cli
-    command: ["claude", "-p", "{prompt}", "--model", "claude-opus-5-5", "--output-format", "text"]
+    command: ["claude", "-p", "{prompt}", "--model", "claude-opus-5-5", "--output-format", "text", "--effort", "xhigh",
+              "--tools", "", "--strict-mcp-config", "--no-session-persistence", "--disallowedTools", "*"]   # prior-only: no tools, no MCP connectors
     env:
       CLAUDE_CONFIG_DIR: ~/.claude-bench
   - name: sol-6.1-cli
-    enabled: true
+    enabled: false
     backend: cli
     command: ["codex", "exec", "--skip-git-repo-check", "--sandbox", "read-only", "-m", "gpt-6.1-sol", "{prompt}"]
     env:
