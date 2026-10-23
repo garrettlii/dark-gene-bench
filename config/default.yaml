@@ -13,9 +13,9 @@ density:
   max_genes_per_paper: 100   # papers linked to more genes than this are treated as screens and dropped
   # Count papers entered in PubMed before this date. Use the earliest
   # training-data cutoff among the evaluated models; record it in the pre-registration.
-  cutoff_date: "2026-07-01"
+  cutoff_date: "2026-05-01"
   stray_pmid_gap: 1000000    # ignore PMIDs this far below the cutoff day's median (old records with reset entry dates; D-008)
-  pmid_cutoff: 42378835          # set by scripts/02_build_density.py --resolve-pmid-cutoff, or by hand
+  pmid_cutoff: 42060948          # set by scripts/02_build_density.py --resolve-pmid-cutoff, or by hand
   epsilon: 0.01              # log10(fractional count + epsilon)
   n_bins: 5
   zero_bin: false            # true: genes with 0 papers form bin 0, the rest get bins 1..n_bins (D-007; off per D-010)
@@ -64,9 +64,14 @@ models:
     env:
       CLAUDE_CONFIG_DIR: ~/.claude-bench
   - name: sol-6.1-cli
-    enabled: false
+    enabled: true
     backend: cli
-    command: ["codex", "exec", "--skip-git-repo-check", "--sandbox", "read-only", "-m", "gpt-6.1-sol", "{prompt}"]
+    # prior-only: shell, exec, apps, plugins, browser, image and sub-agent tools off; web search is off unless --search
+    command: ["codex", "exec", "--skip-git-repo-check", "--ephemeral", "--sandbox", "read-only", "-m", "gpt-6.1-sol",
+              "-c", "model_reasoning_effort=\"xhigh\"", "--disable", "shell_tool", "--disable", "unified_exec",
+              "--disable", "apps", "--disable", "plugins", "--disable", "browser_use", "--disable", "browser_use_external",
+              "--disable", "view_image", "--disable", "image_generation", "--disable", "multi_agent", "--color", "never",
+              "{prompt}"]
     env:
       CODEX_HOME: ~/.codex-bench
 
