@@ -47,14 +47,21 @@ def compute_density(
     max_genes_per_paper: int = 100,
     pmid_cutoff: int | None = None,
     epsilon: float = 0.01,
+    keep_pmids: set[int] | None = None,
 ) -> tuple[pd.DataFrame, dict]:
-    """Per-gene paper counts. Returns (table, summary). Genes with no papers are absent."""
+    """Per-gene paper counts. Returns (table, summary). Genes with no papers are absent.
+
+    ``keep_pmids`` restricts the counted papers (e.g. to a MeSH heading) after the screen
+    filter and fractional weights are computed over each paper's full gene list.
+    """
     n_links_in = len(links)
     if pmid_cutoff is not None:
         links = links[links["pmid"] < int(pmid_cutoff)]
     genes_per_paper = links.groupby("pmid")["GeneID"].nunique()
     kept_papers = genes_per_paper[genes_per_paper <= max_genes_per_paper]
     links = links[links["pmid"].isin(kept_papers.index)]
+    if keep_pmids is not None:
+        links = links[links["pmid"].isin(keep_pmids)]
     weights = 1.0 / links["pmid"].map(kept_papers).astype("float64")
     table = (
         links.assign(weight=weights)
@@ -68,6 +75,7 @@ def compute_density(
         "papers_after_cutoff_filter": int(len(genes_per_paper)),
         "papers_dropped_high_throughput": int((genes_per_paper > max_genes_per_paper).sum()),
         "papers_kept": int(len(kept_papers)),
+        "papers_counted": int(links["pmid"].nunique()),
         "genes_with_papers": int(len(table)),
         "max_genes_per_paper": int(max_genes_per_paper),
         "pmid_cutoff": None if pmid_cutoff is None else int(pmid_cutoff),
@@ -142,3 +150,31 @@ def resolve_pmid_cutoff(date_str: str, max_days_forward: int = 7, api_key: str |
                     "truncated": count > len(ids)}
         time.sleep(0.4)
     raise RuntimeError(f"No PubMed records found within {max_days_forward} days after {date_str}")
+
+
+def esearch(term: str, mindate: str, maxdate: str, api_key: str | None = None, retmax: int = 9_999) -> tuple[int, list[int]]:
+    """(count, PMIDs) for a PubMed query restricted to an entry-date range (YYYY/MM/DD, inclusive)."""
+    params = {"db": "pubmed", "term": term, "datetype": "edat", "mindate": mindate, "maxdate": maxdate,
+              "retmax": str(retmax), "retmode": "json"}
+    if api_key:
+        params["api_key"] = api_key
+    with urllib.request.urlopen(EUTILS + "?" + urllib.parse.urlencode(params), timeout=120) as resp:
+        result = json.load(resp)["esearchresult"]
+    time.sleep(0.12 if api_key else 0.4)
+    return int(result.get("count", 0)), [int(x) for x in result.get("idlist", [])]
+
+
+def query_pmids(term: str, start: dt.date, end: dt.date, search=esearch, cap: int = 9_999) -> set[int]:
+    """All PMIDs for ``term`` entered between start and end (inclusive).
+
+    PubMed returns at most ~10,000 IDs per query, so ranges over the cap are split in half
+    until each piece fits (the approach EDirect uses).
+    """
+    fmt = "%Y/%m/%d"
+    count, ids = search(term, start.strftime(fmt), end.strftime(fmt))
+    if count <= cap:
+        return set(ids)
+    if start == end:
+        raise RuntimeError(f"{count} records for {term!r} on a single day {start}; cannot split further")
+    mid = start + (end - start) // 2
+    return query_pmids(term, start, mid, search, cap) | query_pmids(term, mid + dt.timedelta(days=1), end, search, cap)

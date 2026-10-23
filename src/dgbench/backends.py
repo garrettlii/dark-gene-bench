@@ -115,8 +115,9 @@ class CLIBackend(Backend):
     def complete(self, prompt: str) -> str:
         cmd = [part.replace("{prompt}", prompt) for part in self.command]
         env = {**os.environ, **self.env}
+        # empty stdin: some CLIs (codex exec) otherwise wait for extra prompt input on an open stdin
         proc = subprocess.run(cmd, cwd=self.workdir, env=env, capture_output=True, text=True,
-                              timeout=self.timeout_s)
+                              timeout=self.timeout_s, stdin=subprocess.DEVNULL)
         if proc.returncode != 0:
             raise RuntimeError(f"exit {proc.returncode}: {proc.stderr[-500:]}")
         return proc.stdout

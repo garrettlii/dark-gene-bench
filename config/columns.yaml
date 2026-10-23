@@ -21,4 +21,5 @@ var:
 layers:
   lfc: log_fc                              # log2 fold change (DESeq2); REQUIRED: log fold change ("X" if stored in X)
   padj: adj_p_value                        # FDR-adjusted (DESeq2); REQUIRED: adjusted p-value
+  z: zscore                                # optional: LFC / lfcSE (probe v2 top-effect readouts)
   se: lfcSE                                # optional: standard error

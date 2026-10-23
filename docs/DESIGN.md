@@ -92,6 +92,8 @@ All conditions: no internet, the same neutral harness for every model, fixed bud
 ## Phases
 
 - **Phase 0 — prior-only probe (implemented).** F1 single-readout questions, provisional combined-donor truth, all models, no data. Go/no-go: if prior-only skill does not fall with density, the axis does nothing and the design stops.
+  - *Outcome (D-014):* the stop rule applied. opus-5.5-cli failed P1a and P1c (top-bin skill 0.033, slope 0.003 per bin); sol-6.1-cli was abandoned at 511/600 and is non-binding. Exploratory analysis (not pre-registered) suggested that most predictable structure came from readout × condition, not the knocked-down gene.
+- **Probe v2 — prior-only, named vs hidden (in preparation, `prereg/probe2.md`).** Every question asked with the gene named and hidden; the estimand is how much naming helps (Brier(hidden) − Brier(named)), and its slope on each model's own log density. Families F-readout (transcriptome-wide readouts), F-gene (matched pairs: which knockdown changes more genes) and F-neighbour (most similar signature; easy, hard and discovery tiers). Restricted to perturbations with donor-pair fits (D-015); truth must agree across disjoint donor splits (D-016); per-model cutoffs (D-017); baseline ladder with fame-only and annotation-only rungs (D-018). opus-5.5-cli at full size, sol-6.1-cli on a fraction as a contamination contrast.
 - **Phase 1 — pilot.** 40 genes (8 per quintile, 10 per family) × 2 data conditions × 2 models × k = 1. Builds donor-split pseudobulk, programs, F2–F4 generators, anonymizer and leakage probe, multi-pipeline truth, baselines and the neutral harness.
 - **Phase 2 — full batch.** Size set from pilot variance and cost per run; k ≥ 3 on a subset. If budget is tight, keep F3–F4 plus a small F1 control.
 - **Phase 3 — replication** on the Virtual Cell Challenge 2026 data, if released.
@@ -133,3 +135,4 @@ All conditions: no internet, the same neutral harness for every model, fixed bud
 - Matching method and covariates.
 - Whether F2 stays in the full batch.
 - Compute and API budget.
+- Phase 1 agent/truth donor split. The D1+D2 vs D3+D4 split partly coincides with sequencing batch (docs/DATA.md); the batch-balanced D1+D4 vs D2+D3 split is under consideration. Whatever the split, Phase 1 question selection must not condition on agreement with agent-visible donors.

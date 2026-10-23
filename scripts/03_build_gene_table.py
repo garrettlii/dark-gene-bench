@@ -68,6 +68,27 @@ def main() -> None:
         n_papers=genes.loc[eligible, "n_papers"] if zero_bin else None).to_numpy()
     genes["density_bin"] = genes["density_bin"].astype("Int64")
 
+    # probe v2: one log density and bin per model cutoff (density_<date>.parquet from 02 --cutoff-date)
+    cutoffs = sorted({m["cutoff_date"] for m in cfg["models"] if m.get("enabled") and m.get("cutoff_date")})
+    for date in cutoffs:
+        for kind in ("", "_tcell"):
+            path = derived_path(cfg, f"density{kind}_{date}.parquet")
+            if not path.exists():
+                print(f"note: {path.name} missing; run 02_build_density.py --cutoff-date {date}{' --tcell' if kind else ''}")
+                continue
+            d = attach_density(genes[["GeneID"]], pd.read_parquet(path), epsilon=cfg["density"]["epsilon"])
+            genes[f"n_papers{kind}_{date}"] = d["n_papers"].to_numpy()
+            genes[f"log_density{kind}_{date}"] = d["log_density"].to_numpy()
+            if not kind:
+                col = f"density_bin_{date}"
+                genes[col] = pd.NA
+                genes.loc[eligible, col] = assign_bins(
+                    genes.loc[eligible, f"log_density_{date}"], cfg["density"]["n_bins"],
+                    n_papers=genes.loc[eligible, f"n_papers_{date}"] if zero_bin else None).to_numpy()
+                genes[col] = genes[col].astype("Int64")
+    if cutoffs and f"density_bin_{cutoffs[0]}" in genes:
+        genes["density_bin_strata"] = genes[f"density_bin_{cutoffs[0]}"]  # strata come from the earliest cutoff
+
     ptab.to_parquet(derived_path(cfg, "perturbations.parquet"), index=False)
     genes.to_parquet(derived_path(cfg, "genes.parquet"), index=False)
 

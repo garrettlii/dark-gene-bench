@@ -59,6 +59,9 @@ models:
   - name: opus-5.5-cli
     enabled: true
     backend: cli
+    cutoff_date: "2026-07-01"   # June 2026 knowledge cutoff; probe v2 density for this model (D-017)
+    workers: 2                  # 4 parallel calls caused sign-in failures in Phase 0
+    version_command: ["claude", "--version"]
     command: ["claude", "-p", "{prompt}", "--model", "claude-opus-5-5", "--output-format", "text", "--effort", "xhigh",
               "--tools", "", "--strict-mcp-config", "--no-session-persistence", "--disallowedTools", "*"]   # prior-only: no tools, no MCP connectors
     env:
@@ -66,6 +69,8 @@ models:
   - name: sol-6.1-cli
     enabled: true
     backend: cli
+    cutoff_date: "2026-05-01"   # April 30, 2026 knowledge cutoff (D-012, D-017)
+    version_command: ["codex", "--version"]
     # prior-only: shell, exec, apps, plugins, browser, image and sub-agent tools off; web search is off unless --search
     command: ["codex", "exec", "--skip-git-repo-check", "--ephemeral", "--sandbox", "read-only", "-m", "gpt-6.1-sol",
               "-c", "model_reasoning_effort=\"xhigh\"", "--disable", "shell_tool", "--disable", "unified_exec",
@@ -85,3 +90,69 @@ backends:
 run:
   workers: 4
   retries: 2
+  samples: 2             # probe v2 pre-registration: k calls per prompt; recorded in the batch manifest
+
+go:
+  # archived GOA human release published closest before each model cutoff (D-021); SHA-256 in raw/go/MANIFEST.tsv
+  releases:
+    "2026-05-01": {path: "{data_root}/raw/go/archive/goa_human.gaf.234.gz", release: 234, date_generated: "2026-04-30"}
+    "2026-07-01": {path: "{data_root}/raw/go/archive/goa_human.gaf.236.gz", release: 236, date_generated: "2026-06-17"}
+  gaf: "{data_root}/raw/go/goa_human.gaf.gz"   # current release, downloaded 2026-10-23 (no longer used for baselines)
+  obo: "{data_root}/raw/go/go-basic.obo"
+  exclude_refs: ["PMID:42664972"]   # Zhu et al. 2026 (Cell); annotations citing the dataset paper are dropped
+
+# Probe v2 (prior-only, named vs hidden gene). Values marked FILL are set in prereg/probe2.md before
+# generation; the *_grid lists are the candidate values the dry run reports counts for.
+probe2:
+  seed: 20261024
+  donor_pairs_path: "{data_root}/raw/czi_tcell/GWCD4i.DE_stats.by_donors.h5mu"
+  families: [readout, gene, neighbour]
+  phase0_truth: "{truth_root}/p0-20261023-165705-9eb7/truth.jsonl"   # Phase 0 genes are development data, excluded
+  flagged_stratum: true      # flagged genes form a separate positive-control stratum, pooled across bins (D-022)
+  flagged_per_cell: {readout: 20, gene: 20, neighbour: 10}   # per cell, pooled across bins; neighbour easy tier only
+  max_per_gene: 3            # questions per gene per family
+  sol_fraction: 0.5          # share of questions (same strata) also run on sol-6.1-cli
+  combine_samples: mean_brier   # primary; brier_of_mean is reported as secondary (both are computed)
+  wrong_name: false          # optional control: a third prompt naming a different real gene (same bin, expression-matched)
+  wrong_name_match_log2_tol: 1.0   # expression match for the wrong-name gene, in log2 target baseMean
+  baseline_train_max: 20000  # candidates per family from genes outside the batch, for cross-fitted baselines
+  agreement:
+    # D1 = CE0008162, D2 = CE0010866, D3 = CE0008678, D4 = CE0006864 (docs/DATA.md)
+    splits:
+      d12_d34: [CE0008162_CE0010866, CE0006864_CE0008678]
+      d14_d23: [CE0006864_CE0008162, CE0008678_CE0010866]
+      d13_d24: [CE0008162_CE0008678, CE0006864_CE0010866]
+    candidates:              # D-016 preference order
+      all_three: [d12_d34, d14_d23, d13_d24]
+      d12_d34: [d12_d34]
+      d14_d23: [d14_d23]
+    chosen: {readout: d12_d34, gene: all_three, neighbour: all_three}   # one filter per family (D-024); neighbour: first in the D-016 order that fills 5/2/2
+  readout:
+    R: 50                    # "unchanged" readouts respond to at least R other perturbations
+    R_grid: [5, 20, 50]
+    top_k_effects: null      # optional (off when null): changed readouts only from the target's top K effects by |z|
+    top_k_effects_grid: [null, 50]
+    use_class: true          # effect-size terciles (D-023: d12_d34 fills them at 5 per cell)
+    per_cell: 5              # questions per condition x label x tercile cell per bin
+  gene:
+    ratio: 2                 # larger DE count / smaller DE count
+    ratio_grid: [1.5, 2, 3]
+    match_log2_tol: 0.5      # max |log2 target_baseMean difference| within a pair
+    match_log2_tol_grid: [0.5, 1.0]
+    per_cell: 10             # pairs per condition x label cell per bin
+  neighbour:
+    n_inf: 500               # similarity uses the n_inf most responsive readouts per condition (D-020)
+    options_exclude_phase0: true   # options and distractors also exclude Phase 0 genes (flagged genes always excluded)
+    flagged_tiers: [easy]    # flagged-stratum F-neighbour items: easy tier only
+    n_inf_grid: [500, 1000, 2000]
+    min_de: 30               # target and correct option each have at least this many DE genes
+    min_de_grid: [50, 100, 200]
+    min_self_corr_quantile: 0.5   # self-reliability threshold = this quantile over covered perturbations, per condition (absolute values in the manifest)
+    min_self_corr_quantiles: [0.5, 0.75, 0.9]   # dry-run grid: quantiles over covered perturbations (D-020)
+    margin_quantile: 0.25    # margin threshold = this quantile of the condition's main candidate items' gaps
+    margin_quantiles: [0.25, 0.5, 0.75]         # dry-run grid: quantiles of candidate items' gaps (D-020)
+    go_max_genes: 500        # discovery tier uses GO terms with at most this many annotated genes
+    go_max_genes_grid: [50, 200]
+    match_log2_tol: 1.0      # hard/discovery distractors' expression match to the correct option
+    match_log2_tol_grid: [0.5, 1.0]
+    per_cell: {easy: 5, hard: 2, discovery: 2}   # items per condition cell per bin, per tier

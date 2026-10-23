@@ -25,6 +25,12 @@ These files are updated daily; the manifest records the download time and SHA-25
 
 **Phase 1 needs the per-donor single-cell objects** (one per donor × condition; 22 million cells in total). Check first whether per-donor pseudobulk is provided. If not, compute pseudobulk once on a cluster (e.g. Sherlock) and store only the pseudobulk matrices under `data_root`.
 
+**Donor-pair DE results** (`GWCD4i.DE_stats.by_donors.h5mu`, 16.9 GB, SHA-256 in the manifest): six modalities, one per donor pair, each with the same obs/var/layers schema as `GWCD4i.DE_stats.h5ad` (obs keyed by `{target_contrast}_{culture_condition}`; 10,273 readouts, a subset of the 10,282 in the same order). Only perturbations that passed per-donor DE eligibility are present: 4,880 rows, 2,591 targets, all with at least 30 downstream DE genes; QC-passing rows with 30+ DE genes that are absent have far fewer cells (median 40 vs 364) and less often a significant on-target knockdown (52% vs 93%).
+
+**Donor IDs** (from `sample_metadata.suppl_table.csv`): D1 = CE0008162, D2 = CE0010866, D3 = CE0008678, D4 = CE0006864.
+
+**Sequencing batches:** D1 and D2 Rest and Stim8hr samples were sequenced in 10x run R1; D1 and D2 Stim48hr and all D3 and D4 samples in run R2. A D1+D2 vs D3+D4 split therefore partly coincides with the run batch; D1+D4 vs D2+D3 is batch-balanced.
+
 QC flags described on the dataset page (confirm exact names and semantics with `01_inspect_perturb.py`):
 - `neighboring_gene_KD`: a gene adjacent to the target locus is also knocked down (cis off-target)
 - `distal_offtarget_flag`: possible distal off-target effect
