@@ -1,0 +1,23 @@
+# Column and layer names in the differential-expression results file.
+# Fill these in after running: python scripts/01_inspect_perturb.py --path <file>
+# Leave a field null if the file has no equivalent; required fields raise an error when null.
+de_results:
+  path: "{data_root}/raw/czi_tcell/REPLACE_WITH_FILENAME.h5ad"
+
+obs:
+  target_gene: null        # REQUIRED: perturbed gene symbol
+  target_gene_id: null     # optional: perturbed gene Ensembl ID (preferred for mapping)
+  condition: null          # REQUIRED: culture condition (labels must match probe.condition_text keys)
+  n_cells: null            # optional: cells per perturbation
+  effect_size: null        # optional: e.g. number of DE genes; reported per density bin
+  # Flags listed on the dataset page; confirm the exact names and meanings before use.
+  flags_exclude_true: [neighboring_gene_KD, distal_offtarget_flag, low_target_gex]
+  flags_require_true: [keep_test_genes]
+
+var:
+  gene_symbol: null        # var column with readout gene symbols; null = use var index
+
+layers:
+  lfc: null                # REQUIRED: log fold change ("X" if stored in X)
+  padj: null               # REQUIRED: adjusted p-value
+  se: null                 # optional: standard error

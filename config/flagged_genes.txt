@@ -1,0 +1,4 @@
+# Genes the dataset paper (or its December 2025 preprint) discusses by name, one symbol per line.
+# Their results may already be in model training data, so the probe excludes them by default
+# (probe.exclude_flagged_genes) and later phases report them separately.
+# Fill from the paper's abstract, main figures and highlighted examples.

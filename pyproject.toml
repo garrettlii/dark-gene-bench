@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dgbench"
+version = "0.0.1"
+description = "Does an agent's skill at analysing perturbation data depend on how much has been written about the gene?"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.24",
+  "pandas>=2.0",
+  "pyarrow>=14",
+  "pyyaml>=6",
+  "anndata>=0.10",
+  "h5py>=3.9",
+  "scipy>=1.10",
+]
+
+[project.optional-dependencies]
+api = ["anthropic", "openai"]
+dev = ["pytest>=7"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

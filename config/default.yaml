@@ -1,0 +1,79 @@
+# All three directories must be outside this repository (enforced at load time).
+paths:
+  data_root: ~/dgb-data     # raw downloads and derived tables
+  runs_root: ~/dgb-runs     # questions and model outputs, per batch
+  truth_root: ~/dgb-truth   # answer keys, per batch; never mounted into agent workspaces
+
+ncbi:
+  gene2pubmed: "{data_root}/raw/ncbi/gene2pubmed.gz"
+  gene_info: "{data_root}/raw/ncbi/Homo_sapiens.gene_info.gz"
+  tax_id: 9606
+
+density:
+  max_genes_per_paper: 100   # papers linked to more genes than this are treated as screens and dropped
+  # Count papers entered in PubMed before this date. Use the earliest
+  # training-data cutoff among the evaluated models; record it in the pre-registration.
+  cutoff_date: "2026-07-01"
+  pmid_cutoff: null          # set by scripts/02_build_density.py --resolve-pmid-cutoff, or by hand
+  epsilon: 0.01              # log10(fractional count + epsilon)
+  n_bins: 5
+
+perturb:
+  columns_file: config/columns.yaml
+  min_cells: null            # optional minimum cells per perturbation (needs columns.obs.n_cells)
+  flagged_genes_file: config/flagged_genes.txt
+
+probe:
+  seed: 20261022
+  questions_per_bin: 120
+  max_questions_per_gene: 3
+  exclude_flagged_genes: true
+  label_balance: true
+  # Keys must match the dataset's condition labels exactly (check with scripts/01_inspect_perturb.py).
+  condition_text:
+    Rest: "resting (unstimulated) cells"
+    Stim8hr: "8 hours after re-stimulation"
+    Stim48hr: "48 hours after re-stimulation"
+  # Readouts must be measured genes in the DE results; missing ones are reported and skipped.
+  readout_panel: [IL2, IFNG, TNF, IL2RA, CD69, CD40LG, TNFRSF4, MKI67, IL17A, IL4, IL13, FOXP3, GZMB, CCR7, SELL]
+  truth:
+    alpha: 0.05          # adjusted p below this counts as a change ...
+    lfc_min: 0.25        # ... if |log fold change| is at least this
+    none_padj_min: 0.5   # "unchanged" needs adjusted p at least this ...
+    none_lfc_max: 0.1    # ... and |log fold change| at most this; everything else is dropped
+
+models:
+  # API backends need ANTHROPIC_API_KEY / OPENAI_API_KEY in the environment.
+  - name: opus-5.5-api
+    enabled: false
+    backend: anthropic
+    model: claude-opus-5-5
+  - name: sol-6.1-api
+    enabled: false
+    backend: openai
+    model: gpt-6.1-sol          # confirm the API model id
+    reasoning_effort: xhigh
+  # CLI backends use workspace sign-ins. Confirm flags with `claude --help` and `codex exec --help`.
+  - name: opus-5.5-cli
+    enabled: true
+    backend: cli
+    command: ["claude", "-p", "{prompt}", "--model", "claude-opus-5-5", "--output-format", "text"]
+    env:
+      CLAUDE_CONFIG_DIR: ~/.claude-bench
+  - name: sol-6.1-cli
+    enabled: true
+    backend: cli
+    command: ["codex", "exec", "--skip-git-repo-check", "--sandbox", "read-only", "-m", "gpt-6.1-sol", "{prompt}"]
+    env:
+      CODEX_HOME: ~/.codex-bench
+
+backends:
+  anthropic:
+    max_tokens: 1024
+  cli:
+    workdir: "{runs_root}/_empty_cwd"   # one empty subdirectory per model, outside the repo
+    timeout_s: 600
+
+run:
+  workers: 4
+  retries: 2
