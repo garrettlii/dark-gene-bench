@@ -113,6 +113,7 @@ probe2:
   max_per_gene: 3            # questions per gene per family
   sol_fraction: 0.5          # share of questions (same strata) also run on sol-6.1-cli
   combine_samples: mean_brier   # primary; brier_of_mean is reported as secondary (both are computed)
+  primary_model: opus-5.5-cli   # the decision rule is evaluated on this model; the others are exposure contrasts (prereg/probe2.md)
   wrong_name: false          # optional control: a third prompt naming a different real gene (same bin, expression-matched)
   wrong_name_match_log2_tol: 1.0   # expression match for the wrong-name gene, in log2 target baseMean
   baseline_train_max: 20000  # candidates per family from genes outside the batch, for cross-fitted baselines

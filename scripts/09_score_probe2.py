@@ -22,8 +22,8 @@ from dgbench.baselines import Context, forecasts, label_index  # noqa: E402
 from dgbench.genes import build_maps, read_gene_info  # noqa: E402
 from dgbench.go import filter_annotations, gene_terms, read_gaf  # noqa: E402
 from dgbench.probe2 import LABELS  # noqa: E402
-from dgbench.scoring2 import (COMBINE, auc, brier, cluster_boot, combine_samples, completeness, ece, family_balanced_mean,  # noqa: E402
-                              murphy, normalized_gain, slope)
+from dgbench.scoring2 import (COMBINE, auc, brier, cluster_boot, combine_samples, completeness, decision_branch, ece,  # noqa: E402
+                              family_balanced_mean, murphy, normalized_gain, slope)
 
 COVARIATES = ["n_downstream", "log2_baseMean", "ontarget_effect_size", "donor_correlation_all_mean"]
 
@@ -125,7 +125,7 @@ def main() -> None:
     chosen = cfg["probe2"].get("combine_samples")
 
     models = [m for m in cfg["models"] if (run_dir / f"calls_{m['name']}.jsonl").exists()]
-    status, sections = {}, []
+    status, sections, gains, model_checks = {}, [], {}, {}
     for m in models:
         expected = pd.DataFrame(read_jsonl(run_dir / f"calls_{m['name']}.jsonl"))
         resp = pd.DataFrame(read_jsonl(run_dir / "responses" / f"{m['name']}.jsonl"))
@@ -191,6 +191,7 @@ def main() -> None:
                       f"- pooled gain {fmt(pooled)}; slope with covariates and family {fmt(cov_slope)}; "
                       f"top-bin gain {fmt(top_gain)}; positive-control gain {fmt(pc)}"]
             lines += [f"- {k}: {'pass' if v else ('not evaluated' if v is None else 'FAIL')}" for k, v in checks.items()] + [""]
+            gains[m["name"]], model_checks[m["name"]] = main[[gcol, "family", "cluster"]].rename(columns={gcol: "gain"}), checks
         # secondary measures
         lines += ["### Secondary measures (mean forecast over samples)", ""]
         for (fam, version), g in sc.merge(truth[["qid", "family", "label", "stratum"]], on="qid").groupby(["family", "version"]):
@@ -218,6 +219,23 @@ def main() -> None:
             lines.append(f"- {fam} / {b}: Brier {g['brier'].mean():.3f}; named gain beyond {fmt(beyond)}")
         lines.append("")
         sections += lines
+
+    primary = cfg["probe2"].get("primary_model")
+    if primary in model_checks:
+        branch = decision_branch(model_checks[primary])
+        sections += ["## Decision rule (prereg/probe2.md), applied mechanically", "",
+                     f"- primary model {primary}: branch {branch}"]
+        for other in [n for n in gains if n != primary]:
+            # paired on shared questions: per-question gain difference, family-balanced, gene-clustered bootstrap
+            shared = gains[primary].join(gains[other]["gain"].rename("other"), how="inner")
+            shared["diff"] = shared["gain"] - shared["other"]
+            d = cluster_boot(shared, lambda x: family_balanced_mean(x, "diff"), n_boot=args.n_boot)
+            exposure = branch in (3, 4) and d[1] > 0
+            sections += [f"- exposure contrast {primary} - {other}, pooled gain on {len(shared)} shared main-stratum "
+                         f"F-readout and F-gene questions: {fmt(d)}",
+                         f"- exposure clause (branches 3 and 4; CI excludes 0 with {primary} higher): "
+                         + ("applies" if exposure else "does not apply")]
+        sections.append("")
 
     final = all(s["unanswered"] == 0 and s["infra_errors"] == 0 for s in status.values()) and len(status) > 0
     head = [f"# Probe v2 results: batch {args.batch}", "",

@@ -166,3 +166,16 @@ def family_balanced_mean(df: pd.DataFrame, col: str, families: Sequence[str] = (
     """Mean of the per-family means of ``col`` over ``families`` present in df (equal family weight)."""
     means = [df.loc[df["family"] == f, col].mean() for f in families if (df["family"] == f).any()]
     return float(np.mean(means)) if means else float("nan")
+
+
+# ---------------------------------------------------------------- decision rule (prereg/probe2.md)
+
+def decision_branch(checks: dict) -> int:
+    """Branch 1-4 of the probe v2 decision rule from the primary model's checks."""
+    if not checks["positive_control_gain_ci_low_at_least"]:
+        return 1
+    if not checks["A_pooled_gain_ci_low_above"]:
+        return 2
+    if not (checks["B_slope_with_covariates_ci_low_above"] and checks["top_bin_gain_ci_low_at_least"]):
+        return 3
+    return 4

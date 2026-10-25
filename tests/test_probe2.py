@@ -305,3 +305,14 @@ def test_agreement_filter_per_family():
     assert gen.family_splits(per_family, "gene") == ("all_three", ["a", "b", "c"])
     single = {"probe2": {"agreement": {"candidates": cands, "chosen": "all_three"}}}
     assert gen.family_splits(single, "readout") == ("all_three", ["a", "b", "c"])
+
+
+def test_decision_branch():
+    from dgbench.scoring2 import decision_branch
+    ok = {"A_pooled_gain_ci_low_above": True, "B_slope_with_covariates_ci_low_above": True,
+          "top_bin_gain_ci_low_at_least": True, "positive_control_gain_ci_low_at_least": True}
+    assert decision_branch(ok) == 4
+    assert decision_branch({**ok, "top_bin_gain_ci_low_at_least": False}) == 3
+    assert decision_branch({**ok, "B_slope_with_covariates_ci_low_above": False}) == 3
+    assert decision_branch({**ok, "A_pooled_gain_ci_low_above": False, "B_slope_with_covariates_ci_low_above": None}) == 2
+    assert decision_branch({**ok, "positive_control_gain_ci_low_at_least": False, "A_pooled_gain_ci_low_above": False}) == 1
