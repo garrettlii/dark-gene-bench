@@ -1,6 +1,6 @@
 # Data
 
-All data lives under `paths.data_root` (default `~/dgb-data`), outside the repository. Record every download's checksum; manifests are written next to the files.
+All data lives under `paths.data_root` (default `~/benchmarks/dgb/dgb-data`), outside the repository. Record every download's checksum; manifests are written next to the files.
 
 ## NCBI Gene (literature density and identifiers)
 
@@ -21,7 +21,7 @@ These files are updated daily; the manifest records the download time and SHA-25
 - Data: CZI Virtual Cells Platform, https://virtualcellmodels.cziscience.com/dataset/genome-scale-tcell-perturb-seq
 - Licence: the dataset page lists the MIT License and an Acceptable Use Policy; the article is CC BY-NC. Confirm both before redistribution of any derived files.
 
-**Phase 0 needs only the differential-expression results object** (one row per perturbation × condition; the dataset page lists 33,983 rows × 10,282 measured genes, plus per-perturbation QC flags). Download it manually to `~/dgb-data/raw/czi_tcell/`, set `de_results.path` in `config/columns.yaml`, then run `scripts/01_inspect_perturb.py` and fill in the column names. Record its SHA-256 (the batch manifest also records it).
+**Phase 0 needs only the differential-expression results object** (one row per perturbation × condition; the dataset page lists 33,983 rows × 10,282 measured genes, plus per-perturbation QC flags). Download it manually to `~/benchmarks/dgb/dgb-data/raw/czi_tcell/`, set `de_results.path` in `config/columns.yaml`, then run `scripts/01_inspect_perturb.py` and fill in the column names. Record its SHA-256 (the batch manifest also records it).
 
 **Phase 1 needs the per-donor single-cell objects** (one per donor × condition; 22 million cells in total). Check first whether per-donor pseudobulk is provided. If not, compute pseudobulk once on a cluster (e.g. Sherlock) and store only the pseudobulk matrices under `data_root`.
 

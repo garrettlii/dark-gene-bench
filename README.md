@@ -21,7 +21,7 @@ python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev,api]"
 pytest -q
 
-python scripts/00_fetch_ncbi.py                   # NCBI files -> ~/dgb-data/raw/ncbi
+python scripts/00_fetch_ncbi.py                   # NCBI files -> ~/benchmarks/dgb/dgb-data/raw/ncbi
 # download the DE results file (docs/DATA.md), set its path in config/columns.yaml
 python scripts/01_inspect_perturb.py              # then fill config/columns.yaml
 python scripts/02_build_density.py --resolve-pmid-cutoff
@@ -38,7 +38,7 @@ python scripts/06_score_probe.py --batch <id>     # -> reports/phase0_<id>.md
 
 - **Pre-registration first.** A batch can only be generated from a filled-in, committed and pushed pre-registration; each batch is recorded in a ledger, and a second batch under the same pre-registration needs a recorded reason. See [`prereg/README.md`](prereg/README.md).
 - **Aggregates only in the repo.** Question sets, responses and truth stay outside the repository.
-- **Everything evaluation-related lives outside the repo tree** (`~/dgb-data`, `~/dgb-runs`, `~/dgb-truth` by default), so agents under evaluation can never read the design or the answers.
+- **Everything evaluation-related lives outside the repo tree** (`~/benchmarks/dgb/dgb-data`, `~/benchmarks/dgb/dgb-runs`, `~/benchmarks/dgb/dgb-truth` by default), so agents under evaluation can never read the design or the answers.
 
 ## Layout
 

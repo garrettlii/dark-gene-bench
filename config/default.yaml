@@ -1,8 +1,8 @@
 # All three directories must be outside this repository (enforced at load time).
 paths:
-  data_root: ~/dgb-data     # raw downloads and derived tables
-  runs_root: ~/dgb-runs     # questions and model outputs, per batch
-  truth_root: ~/dgb-truth   # answer keys, per batch; never mounted into agent workspaces
+  data_root: ~/benchmarks/dgb/dgb-data     # raw downloads and derived tables
+  runs_root: ~/benchmarks/dgb/dgb-runs     # questions and model outputs, per batch
+  truth_root: ~/benchmarks/dgb/dgb-truth   # answer keys, per batch; never mounted into agent workspaces
 
 ncbi:
   gene2pubmed: "{data_root}/raw/ncbi/gene2pubmed.gz"

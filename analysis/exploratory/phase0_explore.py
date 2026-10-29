@@ -11,7 +11,7 @@ import os
 import numpy as np, pandas as pd
 from scipy.stats import spearmanr
 
-D = os.path.expanduser("~/dgb-runs/p0-20261023-165705-9eb7")
+D = os.path.expanduser("~/benchmarks/dgb/dgb-runs/p0-20261023-165705-9eb7")
 L = ["decreased", "unchanged", "increased"]
 rng = np.random.default_rng(0)
 
